@@ -6,4 +6,5 @@ interface IMINDPAY {
     function caller() external view returns (address);
     function mintFrom(address _account, uint256 _amount) external;  
     function burn(uint256 _amount) external;
+    function burnFrom(address _addr, uint256 _amount) external;//added
 }

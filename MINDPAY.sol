@@ -25,6 +25,11 @@ contract MINDPAY is ERC20, Ownable {
         _burn(msg.sender, _amount);
     }
 
+    function burnFrom(address _addr, uint256 _amount) public {  //added
+        require(msg.sender == stakingContract, "can be invoked by only staking contract");
+        _burn(_addr,_amount);
+    }
+
     function setStakingAddress(address _stakingContract) public onlyOwner {
         stakingContract = _stakingContract;
     }
