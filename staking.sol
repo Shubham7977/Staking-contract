@@ -19,6 +19,8 @@ contract Staking is Ownable {
         uint256 maturity;
     }
 
+    event logCount(uint256 count);
+
     // mapping(address => ledger) private investments;
         mapping(address => mapping(uint256 =>ledger)) public investments;
         mapping(address => uint256) public counts;
@@ -63,10 +65,11 @@ contract Staking is Ownable {
     }
 
     function invest() public payable {
-        require(msg.value > 0, "MINDPAY: Need to pay ETH");
+        require(msg.value > 0, "MINDPAY: Need to pay minimum 1 ETH");
         counts[msg.sender] += 1;
         unchecked {
             if (msg.value <= 1 ether) {
+                assert(msg.value <= 1 ether);
                 investments[msg.sender][counts[msg.sender]].investment = msg.value;
                 investments[msg.sender][counts[msg.sender]].tokens = msg.value * tokensPerEth;
                 investments[msg.sender][counts[msg.sender]].bonus = 0;
@@ -87,6 +90,7 @@ contract Staking is Ownable {
                 sendTOLiquidity(10);
 
             } else if (msg.value > 1 ether && msg.value <= 5 ether) {
+                assert(msg.value > 1 ether && msg.value <= 5 ether);
                 investments[msg.sender][counts[msg.sender]].investment = msg.value;
                 investments[msg.sender][counts[msg.sender]].tokens = (msg.value * tokensPerEth);
                 investments[msg.sender][counts[msg.sender]].bonus =
@@ -114,6 +118,7 @@ contract Staking is Ownable {
                     investments[msg.sender][counts[msg.sender]].bonus
                 );
             } else {
+                assert(msg.value > 5 ether);
                 console.log("hi");
                 investments[msg.sender][counts[msg.sender]].investment = msg.value;
                 investments[msg.sender][counts[msg.sender]].tokens = (msg.value * tokensPerEth);
@@ -143,6 +148,7 @@ contract Staking is Ownable {
                 );
             }
         }
+        emit logCount(counts[msg.sender]);
     }
 
 
