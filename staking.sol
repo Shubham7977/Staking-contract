@@ -217,11 +217,7 @@ contract Staking is Ownable {
         )}('');
         require(sent,"failed by call function");
 
-        // stakedInvestmentCount[msg.sender] += 1;
-
-
-
-
+        //setting staking variables
         StakedInvestment[msg.sender][_count].stakedInvestment = investments[msg.sender][_count].investment;//added
         StakedInvestment[msg.sender][_count].stakedtoken = investments[msg.sender][_count].tokens;
         StakedInvestment[msg.sender][_count].startTime = block.timestamp;
