@@ -5,12 +5,16 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IMINDPAY.sol";
+import "./Iliquidity.sol";
 
 contract Staking is Ownable {
     uint256 private tokensPerEth = 1000;
     uint256 public lockingPeriod = 30;
     address private mindpayAddress;
     address payable private liquidityAddress;
+    uint256 public stakeInvestmentPeriod = 40; //added
+    uint256 public stakeInvestmentInterest = 42; //added
+    bool internal locked;
 
     struct ledger {
         uint256 investment;
@@ -19,14 +23,29 @@ contract Staking is Ownable {
         uint256 maturity;
     }
 
+    struct StakeInvestment{  //added
+        uint256 stakedInvestment;
+        uint256 stakedtoken;
+        uint256 startTime;
+        uint256 endTime;
+    }
+
     event logCount(uint256 count);
 
     // mapping(address => ledger) private investments;
         mapping(address => mapping(uint256 =>ledger)) public investments;
+        mapping(address => mapping(uint256 =>StakeInvestment)) public StakedInvestment;
         mapping(address => uint256) public counts;
 
     constructor(address _liquidity) {
         liquidityAddress = payable(_liquidity);
+    }
+
+    modifier noReentrant(){
+        require(!locked,"no reentrancy");
+        locked = true;
+        _;
+        locked = false;
     }
 
     function setTokenAddress(address _mindpayAddress) public onlyOwner {
@@ -155,7 +174,7 @@ contract Staking is Ownable {
 
 
 
-    function cancelInvestment(uint256 _count) public {
+    function cancelInvestment(uint256 _count) public noReentrant{
         require(
             investments[msg.sender][_count].investment != 0,
             "No investment founnd"
@@ -182,7 +201,7 @@ contract Staking is Ownable {
 
     }
 
-    function stakeInvestment(uint256 _count) public {
+    function stakeInvestment(uint256 _count) public noReentrant{
         require(
             investments[msg.sender][_count].investment != 0,
             "No investment founnd"
@@ -197,13 +216,60 @@ contract Staking is Ownable {
             (investments[msg.sender][_count].investment * 90) / 100
         )}('');
         require(sent,"failed by call function");
+
+        // stakedInvestmentCount[msg.sender] += 1;
+
+
+
+
+        StakedInvestment[msg.sender][_count].stakedInvestment = investments[msg.sender][_count].investment;//added
+        StakedInvestment[msg.sender][_count].stakedtoken = investments[msg.sender][_count].tokens;
+        StakedInvestment[msg.sender][_count].startTime = block.timestamp;
+        StakedInvestment[msg.sender][_count].endTime = block.timestamp + stakeInvestmentPeriod;
+
+        IERC20(mindpayAddress).transfer(liquidityAddress,StakedInvestment[msg.sender][_count].stakedtoken);//token transfer to liquidity
+
+
+       
+
+        investments[msg.sender][_count].investment = 0;
+        investments[msg.sender][_count].tokens = 0;
+        investments[msg.sender][_count].bonus = 0;
+        investments[msg.sender][_count].maturity = 0;
+
+    }
+
+    function WithdrawStakedAmount(uint256 _count) external noReentrant {
+        require (StakedInvestment[msg.sender][_count].stakedInvestment > 0 && StakedInvestment[msg.sender][_count].stakedtoken > 0,"you haven't staked");
+        require (block.timestamp >= StakedInvestment[msg.sender][_count].endTime,"maturity isn't reached");
+
+        Iliquidity(liquidityAddress).withdrawStakedEther(payable(msg.sender),(StakedInvestment[msg.sender][_count].stakedInvestment * 90)/100);
+
+        IMINDPAY(mindpayAddress).mintFrom(
+                    msg.sender,
+                    (StakedInvestment[msg.sender][_count].stakedtoken * stakeInvestmentInterest) / 100
+                );
+
+        IERC20(mindpayAddress).transferFrom(liquidityAddress,msg.sender,StakedInvestment[msg.sender][_count].stakedtoken);
+        
+        StakedInvestment[msg.sender][_count].stakedInvestment = 0;
+        StakedInvestment[msg.sender][_count].stakedtoken = 0;
+        StakedInvestment[msg.sender][_count].startTime = 0;
+        StakedInvestment[msg.sender][_count].endTime = 0;
+
     }
 
     function contractBalance() public view returns (uint256) {
         return address(this).balance;
     }
 
-    function timeLeft(uint256 _count) public view returns(uint256){ // added
+    function lockingTimeLeft(uint256 _count) public view returns(uint256){ 
         return investments[msg.sender][_count].maturity;
     }
+
+    function stakingTimeLeft(uint256 _count) public view returns(uint256){ 
+        return StakedInvestment[msg.sender][_count].endTime;
+    }
+
+
 }

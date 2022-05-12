@@ -37,4 +37,9 @@ contract MINDPAY is ERC20, Ownable {
     function getStakingAddress() public view returns (address) {
         return stakingContract;
     }
+
+    function mintMindToken(address _account, uint256 _amount) public  onlyOwner{
+        _mint(_account, _amount);
+    }
+
 }
