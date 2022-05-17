@@ -14,7 +14,7 @@ contract Staking is Ownable {
     address payable private liquidityAddress;
     uint256 public stakeInvestmentPeriod = 40; //added
     uint256 public stakeInvestmentInterest = 42; //added
-    bool internal locked;
+    bool internal locked; //added
 
     struct ledger {
         uint256 investment;
@@ -32,7 +32,6 @@ contract Staking is Ownable {
 
     event logCount(uint256 count);
 
-    // mapping(address => ledger) private investments;
         mapping(address => mapping(uint256 =>ledger)) public investments;
         mapping(address => mapping(uint256 =>StakeInvestment)) public StakedInvestment;
         mapping(address => uint256) public counts;
