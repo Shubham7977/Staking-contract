@@ -14,7 +14,7 @@ contract Staking is Ownable {
     address payable private liquidityAddress;
     uint256 public stakeInvestmentPeriod = 40; //added
     uint256 public stakeInvestmentInterest = 42; //added
-    bool internal locked; //added
+    bool internal locked;
 
     struct ledger {
         uint256 investment;
@@ -31,7 +31,12 @@ contract Staking is Ownable {
     }
 
     event logCount(uint256 count);
+    event investmentByUser(address indexed invester, uint256 investmentOfEther, uint256 token,uint256 count, uint256 bonus, uint256 endOfLockingperiod);
+    event stakeInvestmentByUser(address indexed invester, uint256 investmentOfEther, uint256 token,uint256 count, uint256 endOfLockingperiod);
+    event cancelInvestmentByUser(address indexed invester, uint256 count, uint256 returnedEther);
+    event WithdrawStake(address caller, uint256 count, uint256 EtherAmount, uint256 token);
 
+    // mapping(address => ledger) private investments;
         mapping(address => mapping(uint256 =>ledger)) public investments;
         mapping(address => mapping(uint256 =>StakeInvestment)) public StakedInvestment;
         mapping(address => uint256) public counts;
@@ -102,6 +107,15 @@ contract Staking is Ownable {
                     investments[msg.sender][counts[msg.sender]].tokens
                 );
 
+                emit investmentByUser(
+                    msg.sender,
+                    investments[msg.sender][counts[msg.sender]].investment,
+                    investments[msg.sender][counts[msg.sender]].tokens,
+                    counts[msg.sender],
+                    investments[msg.sender][counts[msg.sender]].bonus,
+                    investments[msg.sender][counts[msg.sender]].maturity                
+                );
+
                 //tranfer ether to liquidity
                         // (bool sent, ) = liquidityAddress.call{value:((msg.value * 10) / 100)}('');
                         // require(sent,"failed by call function");
@@ -135,6 +149,16 @@ contract Staking is Ownable {
                     msg.sender,
                     investments[msg.sender][counts[msg.sender]].bonus
                 );
+                emit investmentByUser(
+                    msg.sender,
+                    investments[msg.sender][counts[msg.sender]].investment,
+                    investments[msg.sender][counts[msg.sender]].tokens,
+                    counts[msg.sender],
+                    investments[msg.sender][counts[msg.sender]].bonus,
+                    investments[msg.sender][counts[msg.sender]].maturity                
+                );
+
+
             } else {
                 assert(msg.value > 5 ether);
                 console.log("hi");
@@ -164,12 +188,19 @@ contract Staking is Ownable {
                     msg.sender,
                     investments[msg.sender][counts[msg.sender]].bonus
                 );
+
+                emit investmentByUser(
+                    msg.sender,
+                    investments[msg.sender][counts[msg.sender]].investment,
+                    investments[msg.sender][counts[msg.sender]].tokens,
+                    counts[msg.sender],
+                    investments[msg.sender][counts[msg.sender]].bonus,
+                    investments[msg.sender][counts[msg.sender]].maturity                
+                );
             }
         }
         emit logCount(counts[msg.sender]);
     }
-
-
 
 
 
@@ -192,6 +223,8 @@ contract Staking is Ownable {
         //burning token 100%
         IMINDPAY(mindpayAddress).burn(investments[msg.sender][_count].tokens);
         IMINDPAY(mindpayAddress).burnFrom(msg.sender, investments[msg.sender][_count].bonus);
+
+        emit cancelInvestmentByUser(msg.sender, _count, (investments[msg.sender][_count].investment * 90 / 100));
 
         investments[msg.sender][_count].investment = 0;
         investments[msg.sender][_count].tokens = 0;
@@ -216,13 +249,25 @@ contract Staking is Ownable {
         )}('');
         require(sent,"failed by call function");
 
-        //setting staking variables
+        // stakedInvestmentCount[msg.sender] += 1;
+
+
+
+
         StakedInvestment[msg.sender][_count].stakedInvestment = investments[msg.sender][_count].investment;//added
         StakedInvestment[msg.sender][_count].stakedtoken = investments[msg.sender][_count].tokens;
         StakedInvestment[msg.sender][_count].startTime = block.timestamp;
         StakedInvestment[msg.sender][_count].endTime = block.timestamp + stakeInvestmentPeriod;
 
         IERC20(mindpayAddress).transfer(liquidityAddress,StakedInvestment[msg.sender][_count].stakedtoken);//token transfer to liquidity
+
+        emit stakeInvestmentByUser(
+                    msg.sender,
+                    StakedInvestment[msg.sender][_count].stakedInvestment,
+                    StakedInvestment[msg.sender][_count].stakedtoken,
+                    _count,
+                    StakedInvestment[msg.sender][_count].endTime                
+                );
 
 
        
@@ -246,6 +291,13 @@ contract Staking is Ownable {
                 );
 
         IERC20(mindpayAddress).transferFrom(liquidityAddress,msg.sender,StakedInvestment[msg.sender][_count].stakedtoken);
+
+        emit WithdrawStake(
+            msg.sender,
+            _count,
+            ((StakedInvestment[msg.sender][_count].stakedInvestment * 90)/100),
+            (((StakedInvestment[msg.sender][_count].stakedtoken * stakeInvestmentInterest) / 100) + (StakedInvestment[msg.sender][_count].stakedtoken))
+            );
         
         StakedInvestment[msg.sender][_count].stakedInvestment = 0;
         StakedInvestment[msg.sender][_count].stakedtoken = 0;
